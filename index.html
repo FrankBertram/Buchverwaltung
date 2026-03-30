@@ -299,61 +299,6 @@ textarea { resize: vertical; min-height: 60px; }
   z-index: 2;
 }
 .fab:active { transform: scale(0.92); }
-.fab.open { transform: none; }
-
-.fab-menu {
-  position: absolute;
-  bottom: 66px;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(10px);
-  transition: opacity 0.2s, transform 0.2s;
-}
-.fab-wrap.open .fab-menu {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-}
-.fab-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-  flex-direction: row-reverse;
-}
-.fab-menu-item button {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-.fab-menu-item span {
-  background: #333;
-  color: #fff;
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-.fab-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.3);
-  z-index: 799;
-  display: none;
-}
-.fab-backdrop.open { display: block; }
 
 /* Header-Button für Desktop */
 .header-add-btn {
@@ -821,13 +766,14 @@ textarea { resize: vertical; min-height: 60px; }
   .barcode-row { flex-wrap: wrap; }
   .barcode-row .btn { flex: 1; justify-content: center; min-width: 120px; }
 
-  /* FAB auf Mobil anzeigen, Desktop-Buttons verstecken */
+  /* FAB auf Mobil anzeigen, "Neues Medium"-Desktop-Button verstecken */
   .fab-wrap {
     display: block;
     bottom: calc(24px + env(safe-area-inset-bottom));
     right: calc(16px + env(safe-area-inset-right));
   }
   .header-add-btn { display: none !important; }
+  /* CSV/Backup-Buttons bleiben auf Mobil sichtbar */
 
   /* Scanner auf Mobil: volle Breite */
   .scanner-container { padding: 12px; }
@@ -862,33 +808,20 @@ textarea { resize: vertical; min-height: 60px; }
 
 <div class="container">
   <header>
-    <h1>&#128218; Medienverwaltung <span style="font-size:0.5em;font-weight:400;color:var(--text-muted)">v0.91</span></h1>
+    <h1>&#128218; Medienverwaltung <span style="font-size:0.5em;font-weight:400;color:var(--text-muted)">v0.92</span></h1>
     <p>Bücher &amp; Hörbuch-CDs erfassen und verwalten</p>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
       <button class="btn btn-primary header-add-btn" onclick="openModal()">&#10010; Neues Medium</button>
-      <button class="btn btn-outline header-add-btn" onclick="openCsvImport()">&#128196; CSV Import</button>
-      <button class="btn btn-outline header-add-btn" onclick="openBackupRestore()">&#128190; Backup</button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-outline" onclick="openCsvImport()">&#128196; CSV Import</button>
+      <button class="btn btn-sm btn-outline" onclick="openBackupRestore()">&#128190; Backup</button>
     </div>
   </header>
 
-  <!-- ── FAB-Menü für Mobil ── -->
-  <div class="fab-backdrop" id="fabBackdrop" onclick="closeFabMenu()"></div>
+  <!-- ── FAB für Mobil (nur Neues Medium) ── -->
   <div class="fab-wrap" id="fabWrap">
-    <div class="fab-menu">
-      <div class="fab-menu-item">
-        <button style="background:var(--primary);color:#fff" onclick="closeFabMenu();openModal()">&#10010;</button>
-        <span>Neues Medium</span>
-      </div>
-      <div class="fab-menu-item">
-        <button style="background:#fff;color:var(--text)" onclick="closeFabMenu();openCsvImport()">&#128196;</button>
-        <span>CSV Import</span>
-      </div>
-      <div class="fab-menu-item">
-        <button style="background:#fff;color:var(--text)" onclick="closeFabMenu();openBackupRestore()">&#128190;</button>
-        <span>Backup &amp; Restore</span>
-      </div>
-    </div>
-    <button class="fab" onclick="toggleFabMenu()" aria-label="Aktionen">&#10010;</button>
+    <button class="fab" onclick="openModal()" aria-label="Neues Medium hinzufügen">&#10010;</button>
   </div>
 
   <!-- ── Modal-Dialog: Medienerfassung ── -->
@@ -2108,22 +2041,6 @@ function resetFilters() {
   document.getElementById('filterBewertung').value = '0';
   Renderer.render();
   showToast('Filter zurückgesetzt.');
-}
-
-// ── FAB-Menü ──
-function toggleFabMenu() {
-  const wrap = document.getElementById('fabWrap');
-  const backdrop = document.getElementById('fabBackdrop');
-  const fab = wrap.querySelector('.fab');
-  const isOpen = wrap.classList.contains('open');
-  wrap.classList.toggle('open', !isOpen);
-  backdrop.classList.toggle('open', !isOpen);
-  fab.classList.toggle('open', !isOpen);
-}
-function closeFabMenu() {
-  document.getElementById('fabWrap').classList.remove('open');
-  document.getElementById('fabBackdrop').classList.remove('open');
-  document.querySelector('.fab-wrap .fab').classList.remove('open');
 }
 
 // ── Backup/Restore Modal ──
