@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Medienverwaltung</title>
+<style>
+/* ── Reset & Basis ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #4361ee;
+  --primary-hover: #3a56d4;
+  --danger: #e63946;
+  --danger-hover: #c5303c;
+  --success: #2a9d8f;
+  --success-hover: #238b7f;
+  --warning: #f4a261;
+  --bg: #f8f9fa;
+  --card: #ffffff;
+  --text: #212529;
+  --text-muted: #6c757d;
+  --border: #dee2e6;
+  --star: #f4a261;
+  --star-empty: #ccc;
+  --radius: 10px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+header {
+  text-align: center;
+  padding: 24px 0 16px;
+}
+header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+header p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Karten ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card h2 {
+  font-size: 1.1rem;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-toggle-btn h2 { margin-bottom: 0; }
+.filter-card .card-body { margin-top: 14px; }
+
+/* ── Formular ── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-group { display: flex; flex-direction: column; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+}
+.form-group label .required { color: var(--danger); }
+
+input, select, textarea {
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+textarea { resize: vertical; min-height: 60px; }
+
+.barcode-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.barcode-row input { flex: 1; }
+
+.error-text {
+  color: var(--danger);
+  font-size: 0.78rem;
+  margin-top: 3px;
+  min-height: 1.2em;
+}
+
+/* ── Sterne ── */
+.star-input, .star-display {
+  display: inline-flex;
+  gap: 4px;
+  cursor: pointer;
+}
+.star-display { cursor: default; }
+.star-input .star, .star-display .star {
+  font-size: 1.5rem;
+  color: var(--star-empty);
+  transition: color 0.15s;
+  user-select: none;
+}
+.star-input .star.active, .star-display .star.active {
+  color: var(--star);
+}
+.star-input .star:hover,
+.star-input .star.hover {
+  color: var(--star);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  font-family: inherit;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: var(--success-hover); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: var(--danger-hover); }
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+}
+.btn-outline:hover { background: var(--bg); }
+.btn-scan { background: #e9ecef; color: var(--text); }
+.btn-scan:hover { background: #dee2e6; }
+.btn-sm { padding: 6px 12px; font-size: 0.82rem; }
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+/* Bearbeitungsmodus-Banner */
+.edit-banner {
+  display: none;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+  align-items: center;
+  gap: 8px;
+}
+.edit-banner.visible { display: flex; }
+.edit-banner .btn { margin-left: auto; }
+
+/* ── Modal / Dialog ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 900;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.modal-overlay.open { display: flex; opacity: 1; }
+.modal-overlay.fade-out { opacity: 0; }
+
+.modal {
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  transform: translateY(30px);
+  transition: transform 0.25s ease;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.modal-header h2 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+.modal-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--bg);
+  border-radius: 50%;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.modal-close:hover { background: var(--border); }
+
+/* FAB – Floating Action Button für Mobil */
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  font-size: 1.8rem;
+  box-shadow: 0 4px 16px rgba(67,97,238,0.4);
+  cursor: pointer;
+  z-index: 800;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.fab:active { transform: scale(0.92); }
+
+/* Header-Button für Desktop */
+.header-add-btn {
+  margin-top: 12px;
+}
+
+/* ── Filter & Sortierung ── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.toolbar .form-group { flex: 1; min-width: 140px; }
+.toolbar .form-group label { font-size: 0.78rem; }
+.toolbar input, .toolbar select {
+  padding: 8px 10px;
+  font-size: 0.88rem;
+}
+
+.sort-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  align-items: center;
+}
+.sort-bar span {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.sort-btn {
+  padding: 5px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.sort-btn:hover { border-color: var(--primary); color: var(--primary); }
+.sort-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ── Medienliste (Tabelle) ── */
+.media-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.media-table th, .media-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.media-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.media-table tr:hover { background: #f1f3f5; }
+.media-table .actions { white-space: nowrap; display: flex; gap: 6px; }
+.type-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.type-badge.buch { background: #dbe4ff; color: #364fc7; }
+.type-badge.cd { background: #fff3bf; color: #e67700; }
+
+/* ── Kompakte Listenansicht ── */
+.media-compact { display: none; }
+.media-compact.active { display: block; }
+.compact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+  transition: background 0.15s;
+}
+.compact-item:last-child { border-bottom: none; }
+.compact-item:hover { background: #f1f3f5; }
+.compact-item .compact-title {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-item .compact-autor {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-item .star-display { font-size: 0.9rem; flex-shrink: 0; }
+.compact-item .star-display .star { font-size: 0.9rem; }
+.compact-item .type-badge { flex-shrink: 0; }
+.compact-item .compact-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+}
+
+/* Ansicht-Umschalter */
+.view-toggle {
+  display: inline-flex;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-left: auto;
+}
+.view-toggle button {
+  padding: 5px 12px;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+.view-toggle button + button { border-left: 1.5px solid var(--border); }
+.view-toggle button.active {
+  background: var(--primary);
+  color: #fff;
+}
+.view-toggle button:hover:not(.active) { background: var(--bg); }
+
+/* ── Medienliste (Karten, mobil) ── */
+.media-cards { display: none; }
+.media-card-item {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.media-card-item .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.media-card-item .card-title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+.media-card-item .card-author {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+.media-card-item .card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.media-card-item .card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.media-card-item .barcode-label {
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Leerzustand */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+.empty-state .icon { font-size: 3rem; margin-bottom: 10px; }
+.empty-state p { font-size: 0.95rem; }
+
+/* Zähler */
+.count-badge {
+  background: var(--bg);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #333;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  pointer-events: none;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ── Responsive / iPhone-Optimierung ── */
+@media (max-width: 700px) {
+  /* Safe-Area für Notch / Dynamic Island / Home-Indikator */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .container { padding: 12px; }
+
+  /* Größere Basisschrift für bessere Lesbarkeit */
+  body { font-size: 16px; }
+
+  /* Inputs: min 16px verhindert Safari-Auto-Zoom */
+  input, select, textarea {
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  /* Formularlayout einspaltig */
+  .form-grid { grid-template-columns: 1fr; gap: 10px; }
+  .form-group label { font-size: 0.9rem; margin-bottom: 5px; }
+
+  /* Größere Touch-Targets (Apple empfiehlt min. 44px) */
+  .btn { padding: 12px 20px; font-size: 1rem; min-height: 44px; }
+  .btn-sm { padding: 10px 14px; font-size: 0.9rem; min-height: 44px; }
+  .btn-scan { min-height: 44px; }
+
+  /* Sterne groß genug zum Antippen */
+  .star-input .star { font-size: 2rem; padding: 4px; }
+  .star-display .star { font-size: 1.1rem; }
+
+  /* Sortier-Buttons touch-freundlich */
+  .sort-btn { padding: 8px 14px; font-size: 0.88rem; min-height: 38px; }
+  .sort-bar { gap: 8px; }
+  .sort-bar span { font-size: 0.9rem; }
+
+  /* Ansicht-Umschalter ausblenden (immer Karten auf Mobil) */
+  .view-toggle { display: none; }
+  .media-table-wrap { display: none; }
+  .media-compact { display: none !important; }
+  .media-cards { display: block !important; }
+
+  /* Karten-Darstellung optimiert */
+  .media-card-item { padding: 16px; margin-bottom: 12px; }
+  .media-card-item .card-title { font-size: 1.05rem; }
+  .media-card-item .card-author { font-size: 0.95rem; }
+  .media-card-item .card-meta { font-size: 0.9rem; margin-top: 8px; }
+  .media-card-item .card-actions { margin-top: 12px; }
+  .media-card-item .card-actions .btn { flex: 1; justify-content: center; }
+
+  /* Filter einklappbar */
+  .filter-card .card-body { display: none; }
+  .filter-card.open .card-body { display: block; }
+  .filter-toggle-btn {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+  }
+  .filter-toggle-btn h2 { margin-bottom: 0; }
+  .filter-toggle-arrow {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+  }
+  .filter-card.open .filter-toggle-arrow { transform: rotate(180deg); }
+
+  /* Toolbar vertikal */
+  .toolbar { flex-direction: column; gap: 8px; }
+  .toolbar .form-group { min-width: 100%; }
+  .toolbar .form-group label { font-size: 0.88rem; }
+
+  /* Header kompakter */
+  header { padding: 16px 0 10px; }
+  header h1 { font-size: 1.4rem; }
+
+  /* Cards kompakter */
+  .card { padding: 16px; margin-bottom: 12px; }
+  .card h2 { font-size: 1.05rem; }
+
+  /* Toast über Home-Indikator */
+  .toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
+
+  /* Barcode-Zeile: Scan-Button unter Input auf sehr schmalem Screen */
+  .barcode-row { flex-wrap: wrap; }
+  .barcode-row .btn { flex: 1; justify-content: center; min-width: 120px; }
+
+  /* FAB auf Mobil anzeigen, Desktop-Button verstecken */
+  .fab {
+    display: flex;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    right: calc(16px + env(safe-area-inset-right));
+  }
+  .header-add-btn { display: none; }
+
+  /* Modal auf Mobil: als Sheet von unten */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    border-radius: 20px 20px 0 0;
+    max-height: 92vh;
+    padding: 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    transform: translateY(100%);
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-close { width: 44px; height: 44px; }
+}
+
+@media (min-width: 701px) {
+  .media-cards { display: none !important; }
+  .filter-toggle-btn { pointer-events: none; }
+  .filter-toggle-arrow { display: none; }
+  .filter-card .card-body { display: block !important; }
+  .fab { display: none !important; }
+  .header-add-btn { display: inline-flex; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>&#128218; Medienverwaltung</h1>
+    <p>Bücher &amp; Hörbuch-CDs erfassen und verwalten</p>
+    <button class="btn btn-primary header-add-btn" onclick="openModal()">&#10010; Neues Medium</button>
+  </header>
+
+  <!-- ── FAB für Mobil ── -->
+  <button class="fab" onclick="openModal()" aria-label="Neues Medium hinzufügen">&#10010;</button>
+
+  <!-- ── Modal-Dialog: Medienerfassung ── -->
+  <div class="modal-overlay" id="modalOverlay" onclick="onOverlayClick(event)">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2 id="modalTitle">&#128221; Neues Medium</h2>
+        <button class="modal-close" onclick="closeModal()" aria-label="Schließen">&times;</button>
+      </div>
+
+      <div class="edit-banner" id="editBanner">
+        <span>&#9998;&#65039; <strong>Bearbeitungsmodus</strong> &ndash; Du bearbeitest ein vorhandenes Medium.</span>
+      </div>
+
+      <form id="mediaForm" novalidate>
+        <div class="form-grid">
+
+          <!-- Barcode -->
+          <div class="form-group full">
+            <label for="barcode">Barcode <span class="required">*</span></label>
+            <div class="barcode-row">
+              <input type="text" id="barcode" placeholder="Barcode eingeben oder scannen" autocomplete="off">
+              <button type="button" class="btn btn-scan" onclick="BarcodeScanner.scan()" title="Barcode scannen">&#128247; Scannen</button>
+            </div>
+            <span class="error-text" id="barcodeError"></span>
+          </div>
+
+          <!-- Titel -->
+          <div class="form-group">
+            <label for="titel">Titel <span class="required">*</span></label>
+            <input type="text" id="titel" placeholder="Titel des Mediums">
+            <span class="error-text" id="titelError"></span>
+          </div>
+
+          <!-- Autor -->
+          <div class="form-group">
+            <label for="autor">Autor <span class="required">*</span></label>
+            <input type="text" id="autor" placeholder="Autor / Sprecher">
+            <span class="error-text" id="autorError"></span>
+          </div>
+
+          <!-- Medientyp -->
+          <div class="form-group">
+            <label for="medientyp">Medientyp</label>
+            <select id="medientyp">
+              <option value="Buch">Buch</option>
+              <option value="CD">CD (Hörbuch)</option>
+            </select>
+          </div>
+
+          <!-- Bewertung -->
+          <div class="form-group">
+            <label>Bewertung</label>
+            <div class="star-input" id="starInput">
+              <span class="star" data-value="1">&#9733;</span>
+              <span class="star" data-value="2">&#9733;</span>
+              <span class="star" data-value="3">&#9733;</span>
+              <span class="star" data-value="4">&#9733;</span>
+              <span class="star" data-value="5">&#9733;</span>
+            </div>
+            <input type="hidden" id="bewertung" value="0">
+          </div>
+
+          <!-- Notiz -->
+          <div class="form-group full">
+            <label for="notiz">Notiz (optional)</label>
+            <textarea id="notiz" placeholder="Eigene Anmerkungen..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="submitBtn" style="flex:1">&#128190; Speichern</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal()">Abbrechen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Filter & Sortierung ── -->
+  <div class="card filter-card" id="filterCard">
+    <button class="filter-toggle-btn" onclick="toggleFilterCard()">
+      <h2>&#128270; Filter &amp; Sortierung</h2>
+      <span class="filter-toggle-arrow">&#9660;</span>
+    </button>
+
+    <div class="card-body">
+    <div class="toolbar">
+      <div class="form-group">
+        <label for="filterSearch">Suche (Titel / Autor)</label>
+        <input type="text" id="filterSearch" placeholder="Suchbegriff...">
+      </div>
+      <div class="form-group">
+        <label for="filterTyp">Medientyp</label>
+        <select id="filterTyp">
+          <option value="">Alle</option>
+          <option value="Buch">Buch</option>
+          <option value="CD">CD (Hörbuch)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="filterBewertung">Mindestbewertung</label>
+        <select id="filterBewertung">
+          <option value="0">Alle</option>
+          <option value="1">&#9733; 1+</option>
+          <option value="2">&#9733; 2+</option>
+          <option value="3">&#9733; 3+</option>
+          <option value="4">&#9733; 4+</option>
+          <option value="5">&#9733; 5</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0">
+        <label>&nbsp;</label>
+        <button class="btn btn-sm btn-outline" onclick="resetFilters()">&#128260; Filter zurücksetzen</button>
+      </div>
+    </div>
+
+    <div class="sort-bar">
+      <span>Sortieren:</span>
+      <button class="sort-btn active" data-sort="titel" onclick="toggleSort('titel')">Titel &#9650;</button>
+      <button class="sort-btn" data-sort="autor" onclick="toggleSort('autor')">Autor</button>
+      <button class="sort-btn" data-sort="bewertung" onclick="toggleSort('bewertung')">Bewertung</button>
+      <button class="sort-btn" data-sort="medientyp" onclick="toggleSort('medientyp')">Medientyp</button>
+    </div>
+    </div><!-- /card-body -->
+  </div>
+
+  <!-- ── Medienliste ── -->
+  <div class="card">
+    <h2>&#128218; Medien <span class="count-badge" id="countBadge">0</span>
+      <span class="view-toggle">
+        <button class="active" onclick="switchView('detail')" id="viewDetail" title="Detailansicht">&#128196; Detail</button>
+        <button onclick="switchView('compact')" id="viewCompact" title="Kompakte Liste">&#9776; Kompakt</button>
+      </span>
+    </h2>
+
+    <!-- Kompakte Listenansicht -->
+    <div class="media-compact" id="mediaCompact"></div>
+    <div class="empty-state" id="emptyCompact" style="display:none">
+      <div class="icon">&#128218;</div>
+      <p>Noch keine Medien vorhanden.<br>Erfasse dein erstes Medium oben!</p>
+    </div>
+
+    <!-- Desktop-Tabelle -->
+    <div class="media-table-wrap">
+      <table class="media-table">
+        <thead>
+          <tr>
+            <th>Barcode</th>
+            <th>Titel</th>
+            <th>Autor</th>
+            <th>Typ</th>
+            <th>Bewertung</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="mediaTableBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyTable" style="display:none">
+        <div class="icon">&#128218;</div>
+        <p>Noch keine Medien vorhanden.<br>Erfasse dein erstes Medium oben!</p>
+      </div>
+    </div>
+
+    <!-- Mobile Karten -->
+    <div class="media-cards" id="mediaCards"></div>
+    <div class="empty-state media-cards" id="emptyCards" style="display:none">
+      <div class="icon">&#128218;</div>
+      <p>Noch keine Medien vorhanden.<br>Erfasse dein erstes Medium oben!</p>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   Medienverwaltung – Architektur
+   ──────────────────────────────
+   1. Persistence  – localStorage lesen/schreiben
+   2. DataModel    – CRUD-Operationen auf dem Medienspeicher
+   3. BarcodeScanner – Abstraktion für manuelle / zukünftige Scan-Eingabe
+   4. StarRating   – Interaktive Sternebewertung
+   5. Filters      – Filter- und Sortierlogik
+   6. Renderer     – DOM-Rendering (Tabelle + Karten)
+   7. FormHandler  – Formularverarbeitung & Validierung
+   8. App.init()   – Bootstrap
+   ================================================================ */
+
+// ── 1. Persistence ──
+const Persistence = {
+  KEY: 'medienverwaltung_data',
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  },
+
+  save(data) {
+    localStorage.setItem(this.KEY, JSON.stringify(data));
+  }
+};
+
+// ── 2. DataModel ──
+const DataModel = {
+  items: [],
+
+  init() {
+    const saved = Persistence.load();
+    this.items = saved || this.getExampleData();
+    Persistence.save(this.items);
+  },
+
+  add(medium) {
+    medium.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    this.items.push(medium);
+    Persistence.save(this.items);
+    return medium;
+  },
+
+  update(id, data) {
+    const idx = this.items.findIndex(m => m.id === id);
+    if (idx === -1) return false;
+    this.items[idx] = { ...this.items[idx], ...data };
+    Persistence.save(this.items);
+    return true;
+  },
+
+  remove(id) {
+    this.items = this.items.filter(m => m.id !== id);
+    Persistence.save(this.items);
+  },
+
+  getById(id) {
+    return this.items.find(m => m.id === id) || null;
+  },
+
+  getExampleData() {
+    return [
+      { id: 'ex1', barcode: '9783596521487', titel: 'Der Vorleser', autor: 'Bernhard Schlink', medientyp: 'Buch', bewertung: 5, notiz: 'Klassiker der deutschen Literatur' },
+      { id: 'ex2', barcode: '9783423214124', titel: 'Tschick', autor: 'Wolfgang Herrndorf', medientyp: 'Buch', bewertung: 4, notiz: '' },
+      { id: 'ex3', barcode: '4029759116189', titel: 'Die unendliche Geschichte', autor: 'Michael Ende', medientyp: 'CD', bewertung: 5, notiz: 'Gelesen von Gert Heidenreich' },
+      { id: 'ex4', barcode: '9783548060750', titel: 'Sapiens', autor: 'Yuval Noah Harari', medientyp: 'Buch', bewertung: 4, notiz: '' },
+      { id: 'ex5', barcode: '4029759004189', titel: 'Harry Potter und der Stein der Weisen', autor: 'J.K. Rowling', medientyp: 'CD', bewertung: 5, notiz: 'Gesprochen von Rufus Beck' },
+      { id: 'ex6', barcode: '9783446270787', titel: 'Die Vermessung der Welt', autor: 'Daniel Kehlmann', medientyp: 'Buch', bewertung: 3, notiz: '' },
+    ];
+  }
+};
+
+// ── 3. BarcodeScanner ──
+// Trennung zwischen manueller Eingabe und zukünftigem Kamera-Scanner.
+const BarcodeScanner = {
+  // Manuelle Eingabe: Wert direkt aus dem Input-Feld lesen
+  getManualValue() {
+    return document.getElementById('barcode').value.trim();
+  },
+
+  setManualValue(value) {
+    document.getElementById('barcode').value = value;
+  },
+
+  // Platzhalter für zukünftige Kamera-Scan-Funktion
+  // Hier kann später z.B. QuaggaJS, ZXing oder die Web-API angebunden werden.
+  scan() {
+    showToast('Scanner-Funktion kann später angebunden werden (z.\u00A0B. per Kamera).');
+  },
+
+  // Einheitlicher Zugriff auf den Barcode
+  getValue() {
+    return this.getManualValue();
+  }
+};
+
+// ── 4. StarRating ──
+const StarRating = {
+  currentValue: 0,
+
+  init() {
+    const container = document.getElementById('starInput');
+    const stars = container.querySelectorAll('.star');
+
+    stars.forEach(star => {
+      star.addEventListener('click', () => {
+        this.currentValue = parseInt(star.dataset.value);
+        document.getElementById('bewertung').value = this.currentValue;
+        this.render(container, this.currentValue);
+      });
+
+      star.addEventListener('mouseenter', () => {
+        const hoverVal = parseInt(star.dataset.value);
+        stars.forEach(s => s.classList.toggle('hover', parseInt(s.dataset.value) <= hoverVal));
+      });
+
+      star.addEventListener('mouseleave', () => {
+        stars.forEach(s => s.classList.remove('hover'));
+      });
+    });
+  },
+
+  render(container, value) {
+    container.querySelectorAll('.star').forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.value) <= value);
+    });
+  },
+
+  setValue(val) {
+    this.currentValue = val;
+    document.getElementById('bewertung').value = val;
+    this.render(document.getElementById('starInput'), val);
+  },
+
+  buildStarsHTML(value) {
+    let html = '<span class="star-display">';
+    for (let i = 1; i <= 5; i++) {
+      html += `<span class="star ${i <= value ? 'active' : ''}">&#9733;</span>`;
+    }
+    html += '</span>';
+    return html;
+  }
+};
+
+// ── 5. Filters ──
+const Filters = {
+  sortField: 'titel',
+  sortAsc: true,
+
+  getSearchValue() { return document.getElementById('filterSearch').value.trim().toLowerCase(); },
+  getTypeFilter() { return document.getElementById('filterTyp').value; },
+  getRatingFilter() { return parseInt(document.getElementById('filterBewertung').value) || 0; },
+
+  apply(items) {
+    const search = this.getSearchValue();
+    const typ = this.getTypeFilter();
+    const minRating = this.getRatingFilter();
+
+    let result = items.filter(m => {
+      if (typ && m.medientyp !== typ) return false;
+      if (m.bewertung < minRating) return false;
+      if (search && !m.titel.toLowerCase().includes(search) && !m.autor.toLowerCase().includes(search)) return false;
+      return true;
+    });
+
+    result.sort((a, b) => {
+      let va = a[this.sortField];
+      let vb = b[this.sortField];
+      if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+      if (va < vb) return this.sortAsc ? -1 : 1;
+      if (va > vb) return this.sortAsc ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  },
+
+  renderSortButtons() {
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+      const field = btn.dataset.sort;
+      const isActive = field === this.sortField;
+      btn.classList.toggle('active', isActive);
+      // Pfeil anzeigen
+      const label = { titel: 'Titel', autor: 'Autor', bewertung: 'Bewertung', medientyp: 'Medientyp' }[field];
+      if (isActive) {
+        btn.textContent = label + ' ' + (this.sortAsc ? '\u25B2' : '\u25BC');
+      } else {
+        btn.textContent = label;
+      }
+    });
+  }
+};
+
+// ── 6. Renderer ──
+const Renderer = {
+  currentView: 'detail', // 'detail' oder 'compact'
+
+  render() {
+    const filtered = Filters.apply(DataModel.items);
+
+    // Zähler
+    document.getElementById('countBadge').textContent = filtered.length;
+
+    this.renderTable(filtered);
+    this.renderCompact(filtered);
+    this.renderCards(filtered);
+    this.applyView();
+    Filters.renderSortButtons();
+  },
+
+  applyView() {
+    const tableWrap = document.querySelector('.media-table-wrap');
+    const compact = document.getElementById('mediaCompact');
+    const emptyCompact = document.getElementById('emptyCompact');
+    const emptyTable = document.getElementById('emptyTable');
+
+    if (this.currentView === 'compact') {
+      tableWrap.style.display = 'none';
+      emptyTable.style.display = 'none';
+      compact.style.display = 'block';
+      compact.classList.add('active');
+    } else {
+      tableWrap.style.display = '';
+      compact.style.display = 'none';
+      compact.classList.remove('active');
+      emptyCompact.style.display = 'none';
+    }
+  },
+
+  renderCompact(items) {
+    const container = document.getElementById('mediaCompact');
+    const empty = document.getElementById('emptyCompact');
+
+    if (items.length === 0) {
+      container.innerHTML = '';
+      if (this.currentView === 'compact') empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    container.innerHTML = items.map(m => `
+      <div class="compact-item">
+        <span class="compact-title" title="${esc(m.titel)}">${esc(m.titel)}</span>
+        <span class="compact-autor" title="${esc(m.autor)}">${esc(m.autor)}</span>
+        <span class="type-badge ${m.medientyp.toLowerCase()}">${esc(m.medientyp)}</span>
+        ${StarRating.buildStarsHTML(m.bewertung)}
+        <span class="compact-actions">
+          <button class="btn btn-sm btn-primary" onclick="FormHandler.editItem('${m.id}')" title="Bearbeiten">&#9998;</button>
+          <button class="btn btn-sm btn-danger" onclick="confirmDelete('${m.id}')" title="Löschen">&#128465;</button>
+        </span>
+      </div>
+    `).join('');
+  },
+
+  renderTable(items) {
+    const tbody = document.getElementById('mediaTableBody');
+    const empty = document.getElementById('emptyTable');
+
+    if (items.length === 0) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = items.map(m => `
+      <tr>
+        <td style="font-family:monospace;font-size:0.82rem">${esc(m.barcode)}</td>
+        <td><strong>${esc(m.titel)}</strong>${m.notiz ? '<br><small style="color:var(--text-muted)">' + esc(m.notiz) + '</small>' : ''}</td>
+        <td>${esc(m.autor)}</td>
+        <td><span class="type-badge ${m.medientyp.toLowerCase()}">${esc(m.medientyp)}</span></td>
+        <td>${StarRating.buildStarsHTML(m.bewertung)}</td>
+        <td class="actions">
+          <button class="btn btn-sm btn-primary" onclick="FormHandler.editItem('${m.id}')" title="Bearbeiten">&#9998;</button>
+          <button class="btn btn-sm btn-danger" onclick="confirmDelete('${m.id}')" title="Löschen">&#128465;</button>
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  renderCards(items) {
+    const container = document.getElementById('mediaCards');
+    const empty = document.getElementById('emptyCards');
+
+    if (items.length === 0) {
+      container.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    container.innerHTML = items.map(m => `
+      <div class="media-card-item">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${esc(m.titel)}</div>
+            <div class="card-author">${esc(m.autor)}</div>
+          </div>
+          <span class="type-badge ${m.medientyp.toLowerCase()}">${esc(m.medientyp)}</span>
+        </div>
+        <div class="card-meta">
+          <span class="barcode-label">&#128313; ${esc(m.barcode)}</span>
+          ${StarRating.buildStarsHTML(m.bewertung)}
+        </div>
+        ${m.notiz ? '<div style="font-size:0.85rem;color:var(--text-muted);margin-top:6px">' + esc(m.notiz) + '</div>' : ''}
+        <div class="card-actions">
+          <button class="btn btn-sm btn-primary" onclick="FormHandler.editItem('${m.id}')">&#9998; Bearbeiten</button>
+          <button class="btn btn-sm btn-danger" onclick="confirmDelete('${m.id}')">&#128465; Löschen</button>
+        </div>
+      </div>
+    `).join('');
+  }
+};
+
+// ── 7. FormHandler ──
+const FormHandler = {
+  editId: null,
+
+  init() {
+    document.getElementById('mediaForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handleSubmit();
+    });
+  },
+
+  handleSubmit() {
+    if (!this.validate()) return;
+
+    const data = {
+      barcode: document.getElementById('barcode').value.trim(),
+      titel: document.getElementById('titel').value.trim(),
+      autor: document.getElementById('autor').value.trim(),
+      medientyp: document.getElementById('medientyp').value,
+      bewertung: parseInt(document.getElementById('bewertung').value) || 0,
+      notiz: document.getElementById('notiz').value.trim()
+    };
+
+    if (this.editId) {
+      DataModel.update(this.editId, data);
+      showToast('Medium aktualisiert!');
+    } else {
+      DataModel.add(data);
+      showToast('Medium gespeichert!');
+    }
+
+    closeModal();
+    Renderer.render();
+  },
+
+  validate() {
+    let valid = true;
+    const fields = [
+      { id: 'barcode', errId: 'barcodeError', msg: 'Barcode ist erforderlich.' },
+      { id: 'titel', errId: 'titelError', msg: 'Titel ist erforderlich.' },
+      { id: 'autor', errId: 'autorError', msg: 'Autor ist erforderlich.' },
+    ];
+
+    fields.forEach(f => {
+      const val = document.getElementById(f.id).value.trim();
+      const errEl = document.getElementById(f.errId);
+      if (!val) {
+        errEl.textContent = f.msg;
+        valid = false;
+      } else {
+        errEl.textContent = '';
+      }
+    });
+
+    return valid;
+  },
+
+  editItem(id) {
+    const m = DataModel.getById(id);
+    if (!m) return;
+
+    this.editId = id;
+    document.getElementById('barcode').value = m.barcode;
+    document.getElementById('titel').value = m.titel;
+    document.getElementById('autor').value = m.autor;
+    document.getElementById('medientyp').value = m.medientyp;
+    document.getElementById('notiz').value = m.notiz || '';
+    StarRating.setValue(m.bewertung);
+
+    // Banner & Button anpassen
+    document.getElementById('editBanner').classList.add('visible');
+    document.getElementById('modalTitle').innerHTML = '&#9998; Medium bearbeiten';
+    document.getElementById('submitBtn').innerHTML = '&#10004; Aktualisieren';
+
+    // Modal öffnen
+    openModal();
+  },
+
+  resetForm() {
+    this.editId = null;
+    document.getElementById('mediaForm').reset();
+    StarRating.setValue(0);
+    document.getElementById('editBanner').classList.remove('visible');
+    document.getElementById('modalTitle').innerHTML = '&#128221; Neues Medium';
+    document.getElementById('submitBtn').innerHTML = '&#128190; Speichern';
+    // Fehler löschen
+    document.querySelectorAll('.error-text').forEach(el => el.textContent = '');
+  }
+};
+
+// ── Globale Hilfsfunktionen ──
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function resetForm() { FormHandler.resetForm(); }
+function cancelEdit() { closeModal(); }
+
+// ── Modal-Steuerung ──
+function openModal() {
+  const overlay = document.getElementById('modalOverlay');
+  overlay.classList.add('open');
+  overlay.classList.remove('fade-out');
+  document.body.style.overflow = 'hidden';
+  // Fokus auf erstes Feld
+  setTimeout(() => document.getElementById('barcode').focus(), 200);
+}
+
+function closeModal() {
+  const overlay = document.getElementById('modalOverlay');
+  overlay.classList.add('fade-out');
+  setTimeout(() => {
+    overlay.classList.remove('open', 'fade-out');
+    document.body.style.overflow = '';
+    FormHandler.resetForm();
+  }, 250);
+}
+
+function onOverlayClick(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function confirmDelete(id) {
+  const m = DataModel.getById(id);
+  if (!m) return;
+  if (confirm(`„${m.titel}" wirklich löschen?`)) {
+    DataModel.remove(id);
+    Renderer.render();
+    showToast('Medium gelöscht.');
+    if (FormHandler.editId === id) closeModal();
+  }
+}
+
+function toggleFilterCard() {
+  document.getElementById('filterCard').classList.toggle('open');
+}
+
+function switchView(view) {
+  Renderer.currentView = view;
+  document.getElementById('viewDetail').classList.toggle('active', view === 'detail');
+  document.getElementById('viewCompact').classList.toggle('active', view === 'compact');
+  Renderer.render();
+}
+
+function toggleSort(field) {
+  if (Filters.sortField === field) {
+    Filters.sortAsc = !Filters.sortAsc;
+  } else {
+    Filters.sortField = field;
+    Filters.sortAsc = true;
+  }
+  Renderer.render();
+}
+
+function resetFilters() {
+  document.getElementById('filterSearch').value = '';
+  document.getElementById('filterTyp').value = '';
+  document.getElementById('filterBewertung').value = '0';
+  Renderer.render();
+  showToast('Filter zurückgesetzt.');
+}
+
+// Escape schließt Modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('modalOverlay').classList.contains('open')) {
+    closeModal();
+  }
+});
+
+// Filter-Events: sofortige Aktualisierung
+['filterSearch', 'filterTyp', 'filterBewertung'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => Renderer.render());
+  document.getElementById(id).addEventListener('change', () => Renderer.render());
+});
+
+// ── 8. App Init ──
+const App = {
+  init() {
+    DataModel.init();
+    StarRating.init();
+    FormHandler.init();
+    Renderer.render();
+  }
+};
+
+App.init();
+</script>
+</body>
+</html>
