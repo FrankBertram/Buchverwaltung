@@ -537,6 +537,7 @@ textarea { resize: vertical; min-height: 60px; }
 }
 .compact-item:last-child { border-bottom: none; }
 .compact-item:hover { background: #f1f3f5; }
+.compact-item { cursor: pointer; }
 .compact-item .compact-title {
   font-weight: 600;
   flex: 1;
@@ -552,14 +553,6 @@ textarea { resize: vertical; min-height: 60px; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.compact-item .star-display { font-size: 0.9rem; flex-shrink: 0; }
-.compact-item .star-display .star { font-size: 0.9rem; }
-.compact-item .type-badge { flex-shrink: 0; }
-.compact-item .compact-actions {
-  flex-shrink: 0;
-  display: flex;
-  gap: 4px;
 }
 
 /* Ansicht-Umschalter */
@@ -712,9 +705,7 @@ textarea { resize: vertical; min-height: 60px; }
   /* Ansicht-Umschalter auf Mobil: Karten vs. Kompakt */
   .view-toggle button { min-height: 36px; padding: 6px 10px; font-size: 0.82rem; }
   .media-table-wrap { display: none !important; }
-  .compact-item { font-size: 0.92rem; gap: 8px; padding: 10px 12px; }
-  .compact-item .compact-autor { max-width: 100px; }
-  .compact-item .compact-actions .btn { min-height: 44px; }
+  .compact-item { font-size: 0.95rem; gap: 8px; padding: 12px 14px; min-height: 44px; }
 
   /* Karten-Darstellung optimiert */
   .media-card-item { padding: 16px; margin-bottom: 12px; }
@@ -808,7 +799,7 @@ textarea { resize: vertical; min-height: 60px; }
 
 <div class="container">
   <header>
-    <h1>&#128218; Medienverwaltung <span style="font-size:0.5em;font-weight:400;color:var(--text-muted)">v0.92</span></h1>
+    <h1>&#128218; Medienverwaltung <span style="font-size:0.5em;font-weight:400;color:var(--text-muted)">v0.93</span></h1>
     <p>Bücher &amp; Hörbuch-CDs erfassen und verwalten</p>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
       <button class="btn btn-primary header-add-btn" onclick="openModal()">&#10010; Neues Medium</button>
@@ -1789,15 +1780,9 @@ const Renderer = {
     empty.style.display = 'none';
 
     container.innerHTML = items.map(m => `
-      <div class="compact-item">
+      <div class="compact-item" onclick="FormHandler.editItem('${m.id}')">
         <span class="compact-title" title="${esc(m.titel)}">${esc(m.titel)}</span>
         <span class="compact-autor" title="${esc(m.autor)}">${esc(m.autor)}</span>
-        <span class="type-badge ${m.medientyp.toLowerCase()}">${esc(m.medientyp)}</span>
-        ${StarRating.buildStarsHTML(m.bewertung)}
-        <span class="compact-actions">
-          <button class="btn btn-sm btn-primary" onclick="FormHandler.editItem('${m.id}')" title="Bearbeiten">&#9998;</button>
-          <button class="btn btn-sm btn-danger" onclick="confirmDelete('${m.id}')" title="Löschen">&#128465;</button>
-        </span>
       </div>
     `).join('');
   },
