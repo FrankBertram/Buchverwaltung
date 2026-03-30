@@ -121,6 +121,25 @@ textarea { resize: vertical; min-height: 60px; }
   margin-top: 3px;
   min-height: 1.2em;
 }
+.lookup-status {
+  color: var(--primary);
+  font-size: 0.82rem;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lookup-status::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--primary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Sterne ── */
 .star-input, .star-display {
@@ -364,6 +383,67 @@ textarea { resize: vertical; min-height: 60px; }
   max-width: 500px;
 }
 .scanner-actions .btn { flex: 1; justify-content: center; }
+
+/* ── CSV-Import ── */
+.csv-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 12px;
+}
+.csv-drop-zone:hover, .csv-drop-zone.dragover {
+  border-color: var(--primary);
+  background: #edf2ff;
+}
+.csv-drop-zone .icon { font-size: 2rem; margin-bottom: 6px; }
+.csv-drop-zone input[type="file"] { display: none; }
+
+.csv-preview {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  -webkit-overflow-scrolling: touch;
+}
+.csv-preview table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.csv-preview th, .csv-preview td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.csv-preview th {
+  background: var(--bg);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+.csv-preview tr.error { background: #fff5f5; }
+.csv-preview .row-status { font-size: 0.78rem; }
+.csv-preview .row-ok { color: var(--success); }
+.csv-preview .row-warn { color: var(--warning); }
+.csv-preview .row-err { color: var(--danger); }
+
+.csv-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+.csv-info code {
+  background: var(--bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
 
 /* ── Filter & Sortierung ── */
 .toolbar {
@@ -624,11 +704,12 @@ textarea { resize: vertical; min-height: 60px; }
   .sort-bar { gap: 8px; }
   .sort-bar span { font-size: 0.9rem; }
 
-  /* Ansicht-Umschalter ausblenden (immer Karten auf Mobil) */
-  .view-toggle { display: none; }
-  .media-table-wrap { display: none; }
-  .media-compact { display: none !important; }
-  .media-cards { display: block !important; }
+  /* Ansicht-Umschalter auf Mobil: Karten vs. Kompakt */
+  .view-toggle button { min-height: 36px; padding: 6px 10px; font-size: 0.82rem; }
+  .media-table-wrap { display: none !important; }
+  .compact-item { font-size: 0.92rem; gap: 8px; padding: 10px 12px; }
+  .compact-item .compact-autor { max-width: 100px; }
+  .compact-item .compact-actions .btn { min-height: 44px; }
 
   /* Karten-Darstellung optimiert */
   .media-card-item { padding: 16px; margin-bottom: 12px; }
@@ -708,7 +789,7 @@ textarea { resize: vertical; min-height: 60px; }
 }
 
 @media (min-width: 701px) {
-  .media-cards { display: none !important; }
+  .media-cards { display: none; }
   .filter-toggle-btn { pointer-events: none; }
   .filter-toggle-arrow { display: none; }
   .filter-card .card-body { display: block !important; }
@@ -721,9 +802,13 @@ textarea { resize: vertical; min-height: 60px; }
 
 <div class="container">
   <header>
-    <h1>&#128218; Medienverwaltung</h1>
+    <h1>&#128218; Medienverwaltung <span style="font-size:0.5em;font-weight:400;color:var(--text-muted)">v0.9</span></h1>
     <p>Bücher &amp; Hörbuch-CDs erfassen und verwalten</p>
-    <button class="btn btn-primary header-add-btn" onclick="openModal()">&#10010; Neues Medium</button>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-primary header-add-btn" onclick="openModal()">&#10010; Neues Medium</button>
+      <button class="btn btn-outline header-add-btn" onclick="openCsvImport()">&#128196; CSV Import</button>
+      <button class="btn btn-outline header-add-btn" onclick="openBackupRestore()">&#128190; Backup</button>
+    </div>
   </header>
 
   <!-- ── FAB für Mobil ── -->
@@ -746,12 +831,14 @@ textarea { resize: vertical; min-height: 60px; }
 
           <!-- Barcode -->
           <div class="form-group full">
-            <label for="barcode">Barcode <span class="required">*</span></label>
+            <label for="barcode">Barcode / ISBN <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
             <div class="barcode-row">
-              <input type="text" id="barcode" placeholder="Barcode eingeben oder scannen" autocomplete="off">
-              <button type="button" class="btn btn-scan" onclick="BarcodeScanner.scan()" title="Barcode scannen">&#128247; Scannen</button>
+              <input type="text" id="barcode" placeholder="ISBN eingeben oder scannen" autocomplete="off" inputmode="numeric">
+              <button type="button" class="btn btn-scan" onclick="BarcodeScanner.scan()" title="Barcode scannen">&#128247;</button>
+              <button type="button" class="btn btn-scan" onclick="manualLookup()" title="ISBN nachschlagen">&#128269;</button>
             </div>
             <span class="error-text" id="barcodeError"></span>
+            <span class="lookup-status" id="lookupStatus" style="display:none"></span>
           </div>
 
           <!-- Titel -->
@@ -895,6 +982,88 @@ textarea { resize: vertical; min-height: 60px; }
     <div class="empty-state media-cards" id="emptyCards" style="display:none">
       <div class="icon">&#128218;</div>
       <p>Noch keine Medien vorhanden.<br>Erfasse dein erstes Medium oben!</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Backup/Restore-Modal ── -->
+<div class="modal-overlay" id="backupModalOverlay" onclick="if(event.target===this)closeBackupRestore()">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2>&#128190; Backup &amp; Restore</h2>
+      <button class="modal-close" onclick="closeBackupRestore()" aria-label="Schließen">&times;</button>
+    </div>
+
+    <!-- Backup -->
+    <div style="margin-bottom:20px">
+      <h3 style="font-size:0.95rem;margin-bottom:8px">&#128229; Backup erstellen</h3>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:10px">
+        Exportiert alle Medien als JSON-Datei auf dein Gerät.
+      </p>
+      <button class="btn btn-primary" onclick="BackupRestore.backup()" style="width:100%">&#128229; JSON-Backup herunterladen</button>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+    <!-- Restore -->
+    <div>
+      <h3 style="font-size:0.95rem;margin-bottom:8px">&#128228; Wiederherstellen</h3>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:10px">
+        Importiert eine zuvor erstellte JSON-Backup-Datei.
+      </p>
+
+      <div class="csv-drop-zone" id="backupDropZone" onclick="document.getElementById('backupFileInput').click()">
+        <div class="icon">&#128196;</div>
+        <div>JSON-Datei hierher ziehen oder <strong>klicken</strong></div>
+        <input type="file" id="backupFileInput" accept=".json,application/json">
+      </div>
+
+      <div id="backupPreview" style="display:none">
+        <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px;font-size:0.88rem" id="backupInfo"></div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:0.85rem;display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="radio" name="restoreMode" value="replace" checked>
+            <span><strong>Ersetzen</strong> &ndash; Alle vorhandenen Medien löschen und durch Backup ersetzen</span>
+          </label>
+          <label style="font-size:0.85rem;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+            <input type="radio" name="restoreMode" value="merge">
+            <span><strong>Zusammenführen</strong> &ndash; Backup-Medien zu vorhandenen hinzufügen</span>
+          </label>
+        </div>
+        <button class="btn btn-primary" onclick="BackupRestore.restore()" style="width:100%" id="restoreBtn">&#128228; Wiederherstellen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CSV-Import-Modal ── -->
+<div class="modal-overlay" id="csvModalOverlay" onclick="if(event.target===this)closeCsvImport()">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2>&#128196; CSV Import</h2>
+      <button class="modal-close" onclick="closeCsvImport()" aria-label="Schließen">&times;</button>
+    </div>
+
+    <div class="csv-info">
+      <strong>Format:</strong> CSV-Datei mit den Spalten<br>
+      <code>Titel;Autor;Sterne</code> oder <code>Titel,Autor,Sterne</code><br>
+      Sterne: 1&ndash;5 (optional, Standard: 0). Trennzeichen: Semikolon oder Komma.<br>
+      Die erste Zeile wird als Kopfzeile erkannt und übersprungen, wenn sie &bdquo;Titel&ldquo; enthält.
+    </div>
+
+    <div class="csv-drop-zone" id="csvDropZone" onclick="document.getElementById('csvFileInput').click()">
+      <div class="icon">&#128196;</div>
+      <div>CSV-Datei hierher ziehen oder <strong>klicken</strong> zum Auswählen</div>
+      <input type="file" id="csvFileInput" accept=".csv,.txt,text/csv">
+    </div>
+
+    <div id="csvPreviewArea" style="display:none">
+      <div class="csv-preview" id="csvPreviewTable"></div>
+      <div id="csvSummary" style="font-size:0.88rem;margin-bottom:12px"></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="CsvImport.execute()" style="flex:1" id="csvImportBtn">&#128229; Importieren</button>
+        <button class="btn btn-outline" onclick="CsvImport.reset()">Andere Datei</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1083,13 +1252,17 @@ const BarcodeScanner = {
     if (navigator.vibrate) navigator.vibrate(100);
   },
 
-  // Ergebnis übernehmen und schließen
+  // Ergebnis übernehmen, schließen und ISBN nachschlagen
   accept() {
     if (this.lastResult) {
       this.setManualValue(this.lastResult);
-      showToast('Barcode übernommen: ' + this.lastResult);
     }
+    const code = this.lastResult;
     this.stop();
+    // ISBN-Lookup starten
+    if (code) {
+      IsbnLookup.lookupAndFill(code);
+    }
   },
 
   // Erneut scannen
@@ -1120,6 +1293,326 @@ const BarcodeScanner = {
     } else {
       cleanup();
     }
+  }
+};
+
+// ── 3b. ISBN-Lookup ──
+// Sucht Titel und Autor über Open Library API anhand ISBN/EAN.
+const IsbnLookup = {
+  isLoading: false,
+
+  // Prüft ob der Barcode eine ISBN/EAN sein könnte (10 oder 13 Ziffern)
+  looksLikeIsbn(code) {
+    const clean = code.replace(/[-\s]/g, '');
+    return /^\d{10}(\d{3})?$/.test(clean);
+  },
+
+  // Lookup über Open Library API
+  async lookup(barcode) {
+    const clean = barcode.replace(/[-\s]/g, '');
+    if (!this.looksLikeIsbn(clean)) return null;
+
+    this.isLoading = true;
+    this.showStatus('Suche nach ISBN ' + clean + '...');
+
+    try {
+      const resp = await fetch('https://openlibrary.org/api/books?bibkeys=ISBN:' + clean + '&format=json&jscmd=data');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+      const data = await resp.json();
+      const key = 'ISBN:' + clean;
+
+      if (!data[key]) {
+        this.showStatus('');
+        return null;
+      }
+
+      const book = data[key];
+      const result = {
+        titel: book.title || '',
+        autor: (book.authors || []).map(a => a.name).join(', ') || '',
+      };
+
+      this.showStatus('');
+      return result;
+    } catch (err) {
+      console.warn('ISBN-Lookup fehlgeschlagen:', err);
+      this.showStatus('');
+      return null;
+    } finally {
+      this.isLoading = false;
+    }
+  },
+
+  // Lookup ausführen und Formularfelder füllen
+  async lookupAndFill(barcode) {
+    const result = await this.lookup(barcode);
+    if (!result) {
+      showToast('Kein Treffer für diesen Barcode. Bitte manuell ausfüllen.');
+      return false;
+    }
+
+    // Nur leere Felder ausfüllen (nicht überschreiben wenn User schon was eingetragen hat)
+    const titelEl = document.getElementById('titel');
+    const autorEl = document.getElementById('autor');
+
+    if (!titelEl.value.trim() && result.titel) {
+      titelEl.value = result.titel;
+    }
+    if (!autorEl.value.trim() && result.autor) {
+      autorEl.value = result.autor;
+    }
+
+    if (result.titel || result.autor) {
+      showToast('Gefunden: ' + result.titel);
+    }
+    return true;
+  },
+
+  showStatus(msg) {
+    const el = document.getElementById('lookupStatus');
+    if (el) {
+      el.textContent = msg;
+      el.style.display = msg ? 'block' : 'none';
+    }
+  }
+};
+
+// ── 3c. CSV-Import ──
+const CsvImport = {
+  parsedRows: [],
+
+  // CSV-Text parsen (Semikolon oder Komma als Trennzeichen)
+  parse(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length === 0) return [];
+
+    // Trennzeichen erkennen: mehr Semikola → Semikolon, sonst Komma
+    const sep = (text.match(/;/g) || []).length >= lines.length ? ';' : ',';
+
+    let startIdx = 0;
+    // Kopfzeile erkennen und überspringen
+    const firstLine = lines[0].toLowerCase();
+    if (firstLine.includes('titel') || firstLine.includes('author') || firstLine.includes('autor')) {
+      startIdx = 1;
+    }
+
+    const rows = [];
+    for (let i = startIdx; i < lines.length; i++) {
+      const parts = this.splitCsvLine(lines[i], sep);
+      const titel = (parts[0] || '').trim();
+      const autor = (parts[1] || '').trim();
+      const sterneRaw = (parts[2] || '').trim();
+      const sterne = parseInt(sterneRaw) || 0;
+
+      const errors = [];
+      if (!titel) errors.push('Titel fehlt');
+      if (!autor) errors.push('Autor fehlt');
+      if (sterne < 0 || sterne > 5) errors.push('Sterne ungültig');
+
+      rows.push({
+        titel,
+        autor,
+        sterne: Math.max(0, Math.min(5, sterne)),
+        errors,
+        line: i + 1
+      });
+    }
+    return rows;
+  },
+
+  // Einfacher CSV-Zeilen-Splitter (berücksichtigt Anführungszeichen)
+  splitCsvLine(line, sep) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === sep && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current);
+    return result;
+  },
+
+  // Vorschau rendern
+  preview(text) {
+    this.parsedRows = this.parse(text);
+
+    const area = document.getElementById('csvPreviewArea');
+    const tableDiv = document.getElementById('csvPreviewTable');
+    const summary = document.getElementById('csvSummary');
+
+    if (this.parsedRows.length === 0) {
+      showToast('Keine Daten in der Datei gefunden.');
+      return;
+    }
+
+    const valid = this.parsedRows.filter(r => r.errors.length === 0).length;
+    const invalid = this.parsedRows.length - valid;
+
+    let html = '<table><thead><tr><th>#</th><th>Titel</th><th>Autor</th><th>Sterne</th><th>Status</th></tr></thead><tbody>';
+    this.parsedRows.forEach((r, i) => {
+      const cls = r.errors.length ? 'error' : '';
+      const status = r.errors.length
+        ? '<span class="row-status row-err">' + esc(r.errors.join(', ')) + '</span>'
+        : '<span class="row-status row-ok">&#10004;</span>';
+      html += '<tr class="' + cls + '"><td>' + (i+1) + '</td><td>' + esc(r.titel) + '</td><td>' + esc(r.autor) + '</td><td>' + r.sterne + '</td><td>' + status + '</td></tr>';
+    });
+    html += '</tbody></table>';
+
+    tableDiv.innerHTML = html;
+    summary.innerHTML = '<strong>' + valid + '</strong> gültige Einträge' +
+      (invalid ? ', <span style="color:var(--danger)">' + invalid + ' mit Fehlern (werden übersprungen)</span>' : '') + '.';
+
+    area.style.display = 'block';
+    document.getElementById('csvImportBtn').disabled = valid === 0;
+  },
+
+  // Import ausführen
+  execute() {
+    const valid = this.parsedRows.filter(r => r.errors.length === 0);
+    if (valid.length === 0) return;
+
+    let count = 0;
+    valid.forEach(r => {
+      DataModel.add({
+        barcode: '',
+        titel: r.titel,
+        autor: r.autor,
+        medientyp: 'Buch',
+        bewertung: r.sterne,
+        notiz: ''
+      });
+      count++;
+    });
+
+    Renderer.render();
+    closeCsvImport();
+    showToast(count + ' Medien importiert!');
+  },
+
+  // Zurücksetzen für neue Datei
+  reset() {
+    this.parsedRows = [];
+    document.getElementById('csvPreviewArea').style.display = 'none';
+    document.getElementById('csvFileInput').value = '';
+  }
+};
+
+// ── 3d. Backup & Restore ──
+const BackupRestore = {
+  pendingData: null,
+
+  // JSON-Backup herunterladen
+  backup() {
+    const data = {
+      version: '0.9',
+      exportDate: new Date().toISOString(),
+      medien: DataModel.items
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().slice(0, 10);
+    a.download = 'medienverwaltung-backup-' + date + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('Backup heruntergeladen (' + DataModel.items.length + ' Medien).');
+  },
+
+  // Datei einlesen und Vorschau anzeigen
+  preview(text) {
+    try {
+      const data = JSON.parse(text);
+
+      // Format validieren
+      let medien;
+      if (Array.isArray(data)) {
+        // Einfaches Array akzeptieren
+        medien = data;
+      } else if (data.medien && Array.isArray(data.medien)) {
+        medien = data.medien;
+      } else {
+        showToast('Ungültiges Backup-Format. Erwartet wird ein JSON mit "medien"-Array.');
+        return;
+      }
+
+      // Prüfen ob Einträge Titel haben
+      const valid = medien.filter(m => m.titel);
+      if (valid.length === 0) {
+        showToast('Keine gültigen Medien in der Datei gefunden.');
+        return;
+      }
+
+      this.pendingData = valid;
+
+      // Info anzeigen
+      const info = document.getElementById('backupInfo');
+      let html = '<strong>' + valid.length + ' Medien</strong> in der Backup-Datei.';
+      if (data.exportDate) {
+        const d = new Date(data.exportDate);
+        html += '<br>Erstellt am: ' + d.toLocaleDateString('de-DE') + ', ' + d.toLocaleTimeString('de-DE');
+      }
+      if (data.version) html += '<br>Version: ' + data.version;
+      html += '<br><br>Aktuell vorhandene Medien: <strong>' + DataModel.items.length + '</strong>';
+      info.innerHTML = html;
+
+      document.getElementById('backupPreview').style.display = 'block';
+    } catch (e) {
+      showToast('Datei konnte nicht gelesen werden. Ist es eine gültige JSON-Datei?');
+    }
+  },
+
+  // Wiederherstellen
+  restore() {
+    if (!this.pendingData || this.pendingData.length === 0) return;
+
+    const mode = document.querySelector('input[name="restoreMode"]:checked').value;
+
+    if (mode === 'replace') {
+      if (!confirm('Alle ' + DataModel.items.length + ' vorhandenen Medien werden gelöscht und durch ' + this.pendingData.length + ' Medien aus dem Backup ersetzt. Fortfahren?')) return;
+      DataModel.items = this.pendingData.map(m => ({
+        ...m,
+        id: m.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+      }));
+      Persistence.save(DataModel.items);
+    } else {
+      // Zusammenführen: IDs neu vergeben um Duplikate zu vermeiden
+      this.pendingData.forEach(m => {
+        DataModel.add({
+          barcode: m.barcode || '',
+          titel: m.titel || '',
+          autor: m.autor || '',
+          medientyp: m.medientyp || 'Buch',
+          bewertung: m.bewertung || 0,
+          notiz: m.notiz || ''
+        });
+      });
+    }
+
+    Renderer.render();
+    closeBackupRestore();
+    showToast(this.pendingData.length + ' Medien wiederhergestellt (' + (mode === 'replace' ? 'ersetzt' : 'zusammengeführt') + ').');
+    this.pendingData = null;
+  },
+
+  reset() {
+    this.pendingData = null;
+    document.getElementById('backupPreview').style.display = 'none';
+    document.getElementById('backupFileInput').value = '';
   }
 };
 
@@ -1237,22 +1730,40 @@ const Renderer = {
     Filters.renderSortButtons();
   },
 
+  isMobile() {
+    return window.innerWidth <= 700;
+  },
+
   applyView() {
     const tableWrap = document.querySelector('.media-table-wrap');
     const compact = document.getElementById('mediaCompact');
+    const cards = document.getElementById('mediaCards');
     const emptyCompact = document.getElementById('emptyCompact');
     const emptyTable = document.getElementById('emptyTable');
+    const emptyCards = document.getElementById('emptyCards');
 
     if (this.currentView === 'compact') {
+      // Kompakt: überall Tabelle/Karten ausblenden, Kompaktliste anzeigen
       tableWrap.style.display = 'none';
       emptyTable.style.display = 'none';
+      cards.style.display = 'none';
+      emptyCards.style.display = 'none';
       compact.style.display = 'block';
       compact.classList.add('active');
     } else {
-      tableWrap.style.display = '';
+      // Detail: Kompakt aus, Tabelle (Desktop) oder Karten (Mobil)
       compact.style.display = 'none';
       compact.classList.remove('active');
       emptyCompact.style.display = 'none';
+      if (this.isMobile()) {
+        tableWrap.style.display = 'none';
+        emptyTable.style.display = 'none';
+        cards.style.display = '';
+      } else {
+        tableWrap.style.display = '';
+        cards.style.display = 'none';
+        emptyCards.style.display = 'none';
+      }
     }
   },
 
@@ -1379,7 +1890,6 @@ const FormHandler = {
   validate() {
     let valid = true;
     const fields = [
-      { id: 'barcode', errId: 'barcodeError', msg: 'Barcode ist erforderlich.' },
       { id: 'titel', errId: 'titelError', msg: 'Titel ist erforderlich.' },
       { id: 'autor', errId: 'autorError', msg: 'Autor ist erforderlich.' },
     ];
@@ -1447,6 +1957,16 @@ function showToast(msg) {
 }
 
 function resetForm() { FormHandler.resetForm(); }
+
+// Manuelle ISBN-Suche per Lupe-Button
+function manualLookup() {
+  const code = document.getElementById('barcode').value.trim();
+  if (!code) {
+    showToast('Bitte zuerst einen Barcode / ISBN eingeben.');
+    return;
+  }
+  IsbnLookup.lookupAndFill(code);
+}
 function cancelEdit() { closeModal(); }
 
 // ── Modal-Steuerung ──
@@ -1513,10 +2033,82 @@ function resetFilters() {
   showToast('Filter zurückgesetzt.');
 }
 
-// Escape schließt Modal
+// ── Backup/Restore Modal ──
+function openBackupRestore() {
+  BackupRestore.reset();
+  const overlay = document.getElementById('backupModalOverlay');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeBackupRestore() {
+  const overlay = document.getElementById('backupModalOverlay');
+  overlay.classList.add('fade-out');
+  setTimeout(() => {
+    overlay.classList.remove('open', 'fade-out');
+    document.body.style.overflow = '';
+    BackupRestore.reset();
+  }, 250);
+}
+
+// Backup File-Input & Drag-and-Drop
+document.getElementById('backupFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) { const r = new FileReader(); r.onload = (ev) => BackupRestore.preview(ev.target.result); r.readAsText(file, 'UTF-8'); }
+});
+const backupDZ = document.getElementById('backupDropZone');
+backupDZ.addEventListener('dragover', (e) => { e.preventDefault(); backupDZ.classList.add('dragover'); });
+backupDZ.addEventListener('dragleave', () => backupDZ.classList.remove('dragover'));
+backupDZ.addEventListener('drop', (e) => {
+  e.preventDefault(); backupDZ.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) { const r = new FileReader(); r.onload = (ev) => BackupRestore.preview(ev.target.result); r.readAsText(file, 'UTF-8'); }
+});
+
+// ── CSV-Import Modal ──
+function openCsvImport() {
+  CsvImport.reset();
+  const overlay = document.getElementById('csvModalOverlay');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeCsvImport() {
+  const overlay = document.getElementById('csvModalOverlay');
+  overlay.classList.add('fade-out');
+  setTimeout(() => {
+    overlay.classList.remove('open', 'fade-out');
+    document.body.style.overflow = '';
+    CsvImport.reset();
+  }, 250);
+}
+
+// CSV File-Input & Drag-and-Drop
+document.getElementById('csvFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) readCsvFile(file);
+});
+
+const dropZone = document.getElementById('csvDropZone');
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) readCsvFile(file);
+});
+
+function readCsvFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => CsvImport.preview(e.target.result);
+  reader.readAsText(file, 'UTF-8');
+}
+
+// Escape schließt Modals
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && document.getElementById('modalOverlay').classList.contains('open')) {
-    closeModal();
+  if (e.key === 'Escape') {
+    if (document.getElementById('backupModalOverlay').classList.contains('open')) closeBackupRestore();
+    else if (document.getElementById('csvModalOverlay').classList.contains('open')) closeCsvImport();
+    else if (document.getElementById('modalOverlay').classList.contains('open')) closeModal();
   }
 });
 
