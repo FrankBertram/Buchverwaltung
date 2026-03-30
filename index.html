@@ -799,7 +799,7 @@ textarea { resize: vertical; min-height: 60px; }
 
 <div class="container">
   <header>
-    <h1>&#128218; Medienverwaltung <span style="font-size:0.5em;font-weight:400;color:var(--text-muted)">v0.93</span></h1>
+    <h1>&#128218; Medienverwaltung <span style="font-size:0.5em;font-weight:400;color:var(--text-muted)">v1.0</span></h1>
     <p>Bücher &amp; Hörbuch-CDs erfassen und verwalten</p>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
       <button class="btn btn-primary header-add-btn" onclick="openModal()">&#10010; Neues Medium</button>
@@ -1627,7 +1627,9 @@ const StarRating = {
 
     stars.forEach(star => {
       star.addEventListener('click', () => {
-        this.currentValue = parseInt(star.dataset.value);
+        const val = parseInt(star.dataset.value);
+        // Nochmal gleichen Stern antippen → 0 Sterne
+        this.currentValue = (val === this.currentValue) ? 0 : val;
         document.getElementById('bewertung').value = this.currentValue;
         this.render(container, this.currentValue);
       });
