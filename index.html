@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Medienverwaltung</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 /* ── Reset & Basis ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -279,6 +280,90 @@ textarea { resize: vertical; min-height: 60px; }
 .header-add-btn {
   margin-top: 12px;
 }
+
+/* ── Barcode-Scanner ── */
+.scanner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 1100;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.scanner-overlay.open { display: flex; }
+
+.scanner-container {
+  width: 100%;
+  max-width: 500px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.scanner-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+}
+.scanner-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+.scanner-close {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scanner-close:hover { background: rgba(255,255,255,0.25); }
+
+#scannerView {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+}
+#scannerView video { border-radius: 16px; }
+
+.scanner-hint {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.9rem;
+  text-align: center;
+}
+.scanner-result {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  text-align: center;
+  display: none;
+}
+.scanner-result.visible { display: block; }
+
+.scanner-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 500px;
+}
+.scanner-actions .btn { flex: 1; justify-content: center; }
 
 /* ── Filter & Sortierung ── */
 .toolbar {
@@ -603,6 +688,12 @@ textarea { resize: vertical; min-height: 60px; }
   }
   .header-add-btn { display: none; }
 
+  /* Scanner auf Mobil: volle Breite */
+  .scanner-container { padding: 12px; }
+  #scannerView { border-radius: 12px; }
+  .scanner-close { width: 44px; height: 44px; }
+  .scanner-actions .btn { min-height: 44px; }
+
   /* Modal auf Mobil: als Sheet von unten */
   .modal-overlay { align-items: flex-end; padding: 0; }
   .modal {
@@ -808,6 +899,23 @@ textarea { resize: vertical; min-height: 60px; }
   </div>
 </div>
 
+<!-- ── Scanner-Overlay ── -->
+<div class="scanner-overlay" id="scannerOverlay">
+  <div class="scanner-container">
+    <div class="scanner-header">
+      <h3>&#128247; Barcode scannen</h3>
+      <button class="scanner-close" onclick="BarcodeScanner.stop()" aria-label="Scanner schließen">&times;</button>
+    </div>
+    <div id="scannerView"></div>
+    <div class="scanner-hint" id="scannerHint">Halte den Barcode vor die Kamera</div>
+    <div class="scanner-result" id="scannerResult"></div>
+    <div class="scanner-actions" id="scannerActions" style="display:none">
+      <button class="btn btn-primary" onclick="BarcodeScanner.accept()">&#10004; Übernehmen</button>
+      <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,0.3)" onclick="BarcodeScanner.retry()">&#128260; Nochmal</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -888,26 +996,130 @@ const DataModel = {
 };
 
 // ── 3. BarcodeScanner ──
-// Trennung zwischen manueller Eingabe und zukünftigem Kamera-Scanner.
+// Kamera-basierter Scanner mit html5-qrcode, Fallback auf manuelle Eingabe.
 const BarcodeScanner = {
-  // Manuelle Eingabe: Wert direkt aus dem Input-Feld lesen
+  scanner: null,
+  lastResult: null,
+  isScanning: false,
+
+  // Manuelle Eingabe
   getManualValue() {
     return document.getElementById('barcode').value.trim();
   },
-
   setManualValue(value) {
     document.getElementById('barcode').value = value;
   },
-
-  // Platzhalter für zukünftige Kamera-Scan-Funktion
-  // Hier kann später z.B. QuaggaJS, ZXing oder die Web-API angebunden werden.
-  scan() {
-    showToast('Scanner-Funktion kann später angebunden werden (z.\u00A0B. per Kamera).');
-  },
-
-  // Einheitlicher Zugriff auf den Barcode
   getValue() {
     return this.getManualValue();
+  },
+
+  // Kamera-Scanner starten
+  scan() {
+    // Prüfen ob Bibliothek geladen
+    if (typeof Html5Qrcode === 'undefined') {
+      showToast('Scanner-Bibliothek konnte nicht geladen werden. Bitte Barcode manuell eingeben.');
+      return;
+    }
+
+    this.lastResult = null;
+    const overlay = document.getElementById('scannerOverlay');
+    overlay.classList.add('open');
+    document.getElementById('scannerHint').textContent = 'Halte den Barcode vor die Kamera';
+    document.getElementById('scannerResult').classList.remove('visible');
+    document.getElementById('scannerActions').style.display = 'none';
+
+    this.scanner = new Html5Qrcode('scannerView');
+
+    const config = {
+      fps: 10,
+      qrbox: { width: 300, height: 120 },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.QR_CODE
+      ]
+    };
+
+    this.scanner.start(
+      { facingMode: 'environment' },
+      config,
+      (decodedText) => this.onScanSuccess(decodedText),
+      () => {} // Ignoriere Scan-Fehler (kein Barcode im Bild)
+    ).then(() => {
+      this.isScanning = true;
+    }).catch((err) => {
+      console.warn('Kamera-Zugriff fehlgeschlagen:', err);
+      overlay.classList.remove('open');
+      if (err.toString().includes('NotAllowedError')) {
+        showToast('Kamera-Zugriff wurde verweigert. Bitte in den Browser-Einstellungen erlauben.');
+      } else {
+        showToast('Kamera konnte nicht gestartet werden. Bitte Barcode manuell eingeben.');
+      }
+    });
+  },
+
+  // Erfolgreicher Scan
+  onScanSuccess(decodedText) {
+    this.lastResult = decodedText;
+
+    // Scanner pausieren
+    if (this.scanner && this.isScanning) {
+      this.scanner.pause(true);
+    }
+
+    // Ergebnis anzeigen
+    document.getElementById('scannerHint').textContent = 'Barcode erkannt!';
+    const resultEl = document.getElementById('scannerResult');
+    resultEl.textContent = decodedText;
+    resultEl.classList.add('visible');
+    document.getElementById('scannerActions').style.display = 'flex';
+
+    // Kurzes haptisches Feedback (falls unterstützt)
+    if (navigator.vibrate) navigator.vibrate(100);
+  },
+
+  // Ergebnis übernehmen und schließen
+  accept() {
+    if (this.lastResult) {
+      this.setManualValue(this.lastResult);
+      showToast('Barcode übernommen: ' + this.lastResult);
+    }
+    this.stop();
+  },
+
+  // Erneut scannen
+  retry() {
+    this.lastResult = null;
+    document.getElementById('scannerHint').textContent = 'Halte den Barcode vor die Kamera';
+    document.getElementById('scannerResult').classList.remove('visible');
+    document.getElementById('scannerActions').style.display = 'none';
+
+    if (this.scanner && this.isScanning) {
+      this.scanner.resume();
+    }
+  },
+
+  // Scanner komplett stoppen und Overlay schließen
+  stop() {
+    const overlay = document.getElementById('scannerOverlay');
+
+    const cleanup = () => {
+      overlay.classList.remove('open');
+      this.scanner = null;
+      this.isScanning = false;
+      this.lastResult = null;
+    };
+
+    if (this.scanner && this.isScanning) {
+      this.scanner.stop().then(cleanup).catch(cleanup);
+    } else {
+      cleanup();
+    }
   }
 };
 
