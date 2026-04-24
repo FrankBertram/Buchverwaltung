@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Medienverwaltung</title>
+<link rel="icon" type="image/jpeg" href="buecher.jpg">
+<link rel="shortcut icon" type="image/jpeg" href="buecher.jpg">
+<link rel="apple-touch-icon" href="buecher.jpg">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 /* ── Reset & Basis ── */
@@ -179,6 +182,31 @@ textarea { resize: vertical; min-height: 60px; }
   flex-shrink: 0;
 }
 .star-clear-btn:hover { background: var(--border); color: var(--danger); }
+
+.search-wrap { position: relative; }
+.search-wrap input { padding-right: 36px; }
+.search-clear-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s;
+}
+.search-clear-btn:hover { background: var(--text-muted); color: var(--bg); }
+.search-wrap.has-value .search-clear-btn { display: flex; }
 
 /* ── Buttons ── */
 .btn {
@@ -928,7 +956,10 @@ textarea { resize: vertical; min-height: 60px; }
     <div class="toolbar">
       <div class="form-group">
         <label for="filterSearch">Suche (Titel / Autor)</label>
-        <input type="text" id="filterSearch" placeholder="Suchbegriff...">
+        <div class="search-wrap" id="filterSearchWrap">
+          <input type="text" id="filterSearch" placeholder="Suchbegriff...">
+          <button type="button" class="search-clear-btn" onclick="clearSearch()" title="Suche löschen" aria-label="Suche löschen">&times;</button>
+        </div>
       </div>
       <div class="form-group">
         <label for="filterTyp">Medientyp</label>
@@ -2079,8 +2110,24 @@ function resetFilters() {
   document.getElementById('filterSearch').value = '';
   document.getElementById('filterTyp').value = '';
   document.getElementById('filterBewertung').value = '0';
+  updateSearchClearVisibility();
   Renderer.render();
   showToast('Filter zurückgesetzt.');
+}
+
+function clearSearch() {
+  const input = document.getElementById('filterSearch');
+  input.value = '';
+  updateSearchClearVisibility();
+  Renderer.render();
+  input.focus();
+}
+
+function updateSearchClearVisibility() {
+  const input = document.getElementById('filterSearch');
+  const wrap = document.getElementById('filterSearchWrap');
+  if (!input || !wrap) return;
+  wrap.classList.toggle('has-value', input.value.length > 0);
 }
 
 // ── Backup/Restore Modal ──
@@ -2167,6 +2214,7 @@ document.addEventListener('keydown', (e) => {
   document.getElementById(id).addEventListener('input', () => Renderer.render());
   document.getElementById(id).addEventListener('change', () => Renderer.render());
 });
+document.getElementById('filterSearch').addEventListener('input', updateSearchClearVisibility);
 
 // ── 8. App Init ──
 const App = {
